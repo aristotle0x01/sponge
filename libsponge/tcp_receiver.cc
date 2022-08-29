@@ -1,4 +1,5 @@
 #include "tcp_receiver.hh"
+
 #include "tcp_segment.hh"
 
 // implementation of a TCP receiver
@@ -38,17 +39,17 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if (seg.header().syn) {
         stream_index = 0;
     } else if (fin and seg.payload().size() == 0) {
-        if (0 == checkpoint){
+        if (0 == checkpoint) {
             stream_index = 0;
         } else {
-            if (abs_seq_no < 2){
+            if (abs_seq_no < 2) {
                 return;
             }
             stream_index = abs_seq_no - 2;
         }
     } else {
         // abs index here should't be zero
-        if (0 == abs_seq_no){
+        if (0 == abs_seq_no) {
             return;
         }
         stream_index = abs_seq_no - 1;

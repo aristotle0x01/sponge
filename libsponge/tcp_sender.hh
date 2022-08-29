@@ -4,10 +4,13 @@
 #include "byte_stream.hh"
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
-#include "wrapping_integers.hh"
+#include "tcp_timer.hh"
 
 #include <functional>
+#include <map>
 #include <queue>
+
+using namespace std;
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -25,12 +28,27 @@ class TCPSender {
 
     //! retransmission timer for the connection
     unsigned int _initial_retransmission_timeout;
+    unsigned int _retransmission_timeout;
+    size_t _ms_total_tick;
+    TcpTimer _timer{0};
+
+    size_t _consecutive_retransmissions{0};
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+    uint64_t _check_point{0};
+
+    std::map<uint64_t, TCPSegment> _outstanding{};
+    WrappingInt32 _last_ack_no{0};
+    uint64_t _last_abs_ack_no{0};
+    uint64_t _last_wnd_no{0};
+    uint16_t _window_size{1};
+    uint16_t _last_window_size{1};
+
+    TCPSegment build_segment(const string &data, bool syn, bool fin, WrappingInt32 seqno) const;
 
   public:
     //! Initialize a TCPSender

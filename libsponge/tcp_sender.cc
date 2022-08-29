@@ -4,7 +4,6 @@
 #include "tcp_state.hh"
 
 #include <algorithm>
-#include <iostream>
 #include <list>
 #include <random>
 
@@ -42,15 +41,9 @@ void TCPSender::fill_window() {
         _segments_out.push(seg);
         _outstanding[_next_abs_seq_no] = seg;
 
-        std::cout << "sent:" << _next_abs_seq_no << '-' << seg.length_in_sequence_space() << '\n';
-
         _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
-
         _timer.start(_ms_total_tick, _retransmission_timeout);
     } else if (state == TCPSenderStateSummary::SYN_ACKED) {
-        // What should I do if the window size is zero? If the receiver has announced a
-        // window size of zero, the fill window method should act like the window size is
-        // one.
         bool fin = false;
         while (!_stream.buffer_empty() and _next_abs_seq_no <= _wnd_right_abs_no) {
             size_t gap = _wnd_right_abs_no - _next_abs_seq_no + 1;
@@ -63,9 +56,6 @@ void TCPSender::fill_window() {
             _segments_out.push(seg);
             _outstanding[_next_abs_seq_no] = seg;
 
-            std::cout << "sent:" << _next_abs_seq_no << '-' << gap << '-' << seg.length_in_sequence_space() << '-'
-                       << readable << '-' << _window_size << '\n';
-
             _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
             _timer.start(_ms_total_tick, _retransmission_timeout);
         }
@@ -73,8 +63,6 @@ void TCPSender::fill_window() {
             TCPSegment seg = build_segment(std::string(), false, true, wrap(_next_abs_seq_no, _isn));
             _segments_out.push(seg);
             _outstanding[_next_abs_seq_no] = seg;
-
-            std::cout << "sent:" << _next_abs_seq_no << '-' << seg.length_in_sequence_space() << '-' << _window_size << '\n';
 
             _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
             _timer.start(_ms_total_tick, _retransmission_timeout);
@@ -87,11 +75,8 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ack_no = unwrap(ackno, _isn, _check_point);
-    if (abs_ack_no > _next_abs_seq_no) {
-        // Impossible ackno (beyond next seqno) is ignored
-        return;
-    }
-    if (abs_ack_no < _wnd_left_abs_no){
+    if (abs_ack_no > _next_abs_seq_no or abs_ack_no < _wnd_left_abs_no) {
+        // Impossible ackno (beyond next seqno) is ignored or repeated ack
         return;
     }
 
@@ -118,9 +103,11 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             _timer.restart(_ms_total_tick, _retransmission_timeout);
         }
     }
-
-    // _window_size = (0 == window_size ? 1 : window_size);
+    
+    // What should I do if the window size is zero? If the receiver has announced a
+    // window size of zero, the fill window method should act like the window size is one.
     // When filling window, treat a '0' window size as equal to '1' but don't back off RTO
+    // so when _window_size == 0, then (_wnd_right_abs_no-_wnd_left_abs_no+1)==1
     _window_size = window_size;
     _last_ack_no = ackno;
     _wnd_left_abs_no = unwrap(_last_ack_no, _isn, _check_point);
@@ -147,7 +134,6 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
             _retransmission_timeout = _retransmission_timeout * 2;
             _consecutive_retransmissions++;
         }
-        std::cout << "resend:" << it->first << '-' << _retransmission_timeout <<'\n';
         _timer.restart(_ms_total_tick, _retransmission_timeout);
     }
 }

@@ -25,6 +25,8 @@ class TCPSender {
 
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};
+    //! sent yet not acked
+    std::map<uint64_t, TCPSegment> _outstanding{};
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
@@ -36,8 +38,6 @@ class TCPSender {
     //! accumulated tick of each tick() called, as timer start input
     size_t _ms_total_tick;
     size_t _consecutive_retransmissions{0};
-
-    std::map<uint64_t, TCPSegment> _outstanding{};
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_abs_seq_no{0};

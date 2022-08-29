@@ -1,7 +1,7 @@
 #ifndef SPONGE_LIBSPONGE_TCP_TIMER_HH
 #define SPONGE_LIBSPONGE_TCP_TIMER_HH
 
-#include <string>
+#include <cstddef>
 
 class TcpTimer {
   private:

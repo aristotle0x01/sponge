@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <list>
 #include <random>
+#include <iostream>
 
 // implementation of a TCP sender
 
@@ -75,6 +76,16 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ack_no = unwrap(ackno, _isn, _check_point);
+
+    uint64_t last_abs_ack_no = unwrap(_last_ack_no, _isn, _check_point);
+    if (abs_ack_no > last_abs_ack_no) {
+        _retransmission_timeout = _initial_retransmission_timeout;
+        _consecutive_retransmissions = 0;
+        if (!_outstanding.empty()) {
+            _timer.restart(_ms_total_tick, _retransmission_timeout);
+        }
+    }
+    
     if (abs_ack_no > _next_abs_seq_no or abs_ack_no < _wnd_left_abs_no) {
         // Impossible ackno (beyond next seqno) is ignored or repeated ack
         return;
@@ -94,15 +105,6 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     if (_outstanding.empty()) {
         _timer.stop();
     }
-
-    uint64_t last_abs_ack_no = unwrap(_last_ack_no, _isn, _check_point);
-    if (abs_ack_no > last_abs_ack_no) {
-        _retransmission_timeout = _initial_retransmission_timeout;
-        _consecutive_retransmissions = 0;
-        if (!_outstanding.empty()) {
-            _timer.restart(_ms_total_tick, _retransmission_timeout);
-        }
-    }
     
     // What should I do if the window size is zero? If the receiver has announced a
     // window size of zero, the fill window method should act like the window size is one.
@@ -120,21 +122,20 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _ms_total_tick = _ms_total_tick + ms_since_last_tick;
-
     bool expired = _timer.expire(_ms_total_tick);
 
     if (_outstanding.empty()) {
         _timer.stop();
-    }
-
-    if (expired and !_outstanding.empty()) {
-        auto it = _outstanding.begin();
-        _segments_out.push(it->second);
-        if (_window_size > 0) {
-            _retransmission_timeout = _retransmission_timeout * 2;
-            _consecutive_retransmissions++;
+    } else {
+        if (expired) {
+            auto it = _outstanding.begin();
+            _segments_out.push(it->second);
+            if (_window_size > 0) {
+                _retransmission_timeout = _retransmission_timeout * 2;
+                _consecutive_retransmissions++;
+            }
+            _timer.restart(_ms_total_tick, _retransmission_timeout);
         }
-        _timer.restart(_ms_total_tick, _retransmission_timeout);
     }
 }
 

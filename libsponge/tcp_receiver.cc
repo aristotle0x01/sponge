@@ -20,6 +20,12 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
 
     uint64_t checkpoint = stream_out().bytes_written();
     uint64_t abs_seq_no = unwrap(seg.header().seqno, WrappingInt32(std::get<0>(_syn)), checkpoint);
+    uint64_t next_valid_seq_no = ackno().has_value() ? unwrap(ackno().value(), WrappingInt32(std::get<0>(_syn)), checkpoint):0;
+    size_t tw = window_size()==0 ? 0 : window_size()-1;
+    // discard segments out of current wnd range
+    if(abs_seq_no > (next_valid_seq_no+tw)){
+        return;
+    }
 
     bool fin = false;
     if (seg.header().fin) {

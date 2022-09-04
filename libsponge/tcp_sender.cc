@@ -4,9 +4,9 @@
 #include "tcp_state.hh"
 
 #include <algorithm>
+#include <iostream>
 #include <list>
 #include <random>
-#include <iostream>
 
 // implementation of a TCP sender
 
@@ -60,7 +60,8 @@ void TCPSender::fill_window() {
             _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
             _timer.start(_ms_total_tick, _retransmission_timeout);
         }
-        if (fin == false and _stream.buffer_empty() and _stream.input_ended() and _next_abs_seq_no <= _wnd_right_abs_no) {
+        if (fin == false and _stream.buffer_empty() and _stream.input_ended() and
+            _next_abs_seq_no <= _wnd_right_abs_no) {
             TCPSegment seg = build_segment(std::string(), false, true, wrap(_next_abs_seq_no, _isn));
             _segments_out.push(seg);
             _outstanding[_next_abs_seq_no] = seg;
@@ -85,7 +86,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             _timer.restart(_ms_total_tick, _retransmission_timeout);
         }
     }
-    
+
     if (abs_ack_no > _next_abs_seq_no or abs_ack_no < _wnd_left_abs_no) {
         // Impossible ackno (beyond next seqno) is ignored or repeated ack
         return;
@@ -95,7 +96,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     for (auto it = _outstanding.begin(); it != _outstanding.end(); ++it) {
         // What if an acknowledgment only partially acknowledges some outstanding segment?
         // in test case 17 there are repeated acks that may partially acknowledge
-        if ((it->first + it->second.length_in_sequence_space()-1) < abs_ack_no) {
+        if ((it->first + it->second.length_in_sequence_space() - 1) < abs_ack_no) {
             llist.push_back(it->first);
         }
     }
@@ -105,7 +106,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     if (_outstanding.empty()) {
         _timer.stop();
     }
-    
+
     // What should I do if the window size is zero? If the receiver has announced a
     // window size of zero, the fill window method should act like the window size is one.
     // When filling window, treat a '0' window size as equal to '1' but don't back off RTO
@@ -113,7 +114,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _window_size = window_size;
     _last_ack_no = ackno;
     _wnd_left_abs_no = unwrap(_last_ack_no, _isn, _check_point);
-    _wnd_right_abs_no = _wnd_left_abs_no + (_window_size == 0 ? 1:_window_size) - 1;
+    _wnd_right_abs_no = _wnd_left_abs_no + (_window_size == 0 ? 1 : _window_size) - 1;
     if (_wnd_left_abs_no > _check_point and _window_size > 0) {
         _check_point = _wnd_left_abs_no - 1;
     }

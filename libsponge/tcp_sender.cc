@@ -49,10 +49,11 @@ void TCPSender::fill_window() {
         while (!_stream.buffer_empty() and _next_abs_seq_no <= _wnd_right_abs_no) {
             size_t gap = _wnd_right_abs_no - _next_abs_seq_no + 1;
             size_t readable = std::min({TCPConfig::MAX_PAYLOAD_SIZE, gap, _stream.buffer_size()});
-            if (_stream.input_ended() and (_next_abs_seq_no + readable) <= _wnd_right_abs_no) {
+            std::string data = _stream.read(readable);
+            if (_stream.eof() and (_next_abs_seq_no + readable) <= _wnd_right_abs_no) {
+                // lab4 fix: only set fin when read to eof
                 fin = true;
             }
-            std::string data = _stream.read(readable);
             TCPSegment seg = build_segment(data, false, fin, wrap(_next_abs_seq_no, _isn));
             _segments_out.push(seg);
             _outstanding[_next_abs_seq_no] = seg;
@@ -60,8 +61,7 @@ void TCPSender::fill_window() {
             _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
             _timer.start(_ms_total_tick, _retransmission_timeout);
         }
-        if (fin == false and _stream.buffer_empty() and _stream.input_ended() and
-            _next_abs_seq_no <= _wnd_right_abs_no) {
+        if (fin == false and _stream.eof() and _next_abs_seq_no <= _wnd_right_abs_no) {
             TCPSegment seg = build_segment(std::string(), false, true, wrap(_next_abs_seq_no, _isn));
             _segments_out.push(seg);
             _outstanding[_next_abs_seq_no] = seg;

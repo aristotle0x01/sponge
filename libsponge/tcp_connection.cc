@@ -111,7 +111,11 @@ size_t TCPConnection::write(const string &data) {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
-            seg.header().win = _receiver.window_size();
+            if (_receiver.window_size() >= std::numeric_limits<uint16_t>::max()){
+                seg.header().win = std::numeric_limits<uint16_t>::max();
+            } else {
+                seg.header().win = _receiver.window_size();
+            }
         }
         _segments_out.push(seg);
         if (seg.header().fin) {

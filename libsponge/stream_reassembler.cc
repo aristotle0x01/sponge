@@ -9,9 +9,6 @@
 
 // You will need to add private members to the class declaration in `stream_reassembler.hh`
 
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
-
 using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity)
@@ -34,26 +31,21 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         _ended = true;
     }
 
-    // stream capacity limit
-    size_t remaining_capacity = _output.remaining_capacity();
-
     // always put into reassemble buffer first, then reassemble to in-order bytes
     size_t i = 0;
     // data exceed capacity will be discarded, reserve earlier bytes first
-    while (i < data.length() and i < (_next_stream_index + remaining_capacity)) {
-        // skip already written
+    while (i < data.length() and (index + i) < (_next_stream_index + _capacity)) {
         if ((index + i) < _next_stream_index) {
             i++;
             continue;
         }
-
         // marker always starts with _next_stream_index
         int set_index = (index + i) - _next_stream_index;
         if (!_reassemble_marker[set_index]) {
-            _reassemble_marker[set_index] = true;
-            _buffer[set_index] = data[i];
             _reassemble_count++;
         }
+        _reassemble_marker[set_index] = true;
+        _buffer[set_index] = data[i];
         i++;
     }
 
@@ -83,6 +75,7 @@ void StreamReassembler::reassemble() {
             // shift to make _reassemble_marker starts with _next_stream_index
             _reassemble_marker[j - i] = _reassemble_marker[j];
             _buffer[j - i] = _buffer[j];
+            _reassemble_marker[j] = false;
         }
     }
 }

@@ -100,10 +100,6 @@ void TCPConnection::check_active() {
 bool TCPConnection::active() const { return _active; }
 
 size_t TCPConnection::write(const string &data) {
-    if (!active()) {
-        return 0;
-    }
-
     size_t written = _sender.stream_in().write(data);
     _sender.fill_window();
     while (!_sender.segments_out().empty()) {
@@ -111,7 +107,7 @@ size_t TCPConnection::write(const string &data) {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
-            if (_receiver.window_size() >= std::numeric_limits<uint16_t>::max()){
+            if (_receiver.window_size() >= std::numeric_limits<uint16_t>::max()) {
                 seg.header().win = std::numeric_limits<uint16_t>::max();
             } else {
                 seg.header().win = _receiver.window_size();
@@ -131,10 +127,6 @@ size_t TCPConnection::write(const string &data) {
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
-    if (not active()) {
-        return;
-    }
-
     if (_sender.consecutive_retransmissions() >= TCPConfig::MAX_RETX_ATTEMPTS) {
         send_reset();
         return;

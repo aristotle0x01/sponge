@@ -18,7 +18,7 @@ class StreamReassembler {
     uint64_t _ending_index;
     std::vector<bool> _reassemble_marker;
     std::vector<char> _buffer{};
-    size_t _reassemble_count;
+    size_t _reassemble_count{0};
     bool _ended;
 
     ByteStream _output;  //!< The reassembled in-order byte stream

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -15,16 +16,20 @@ class StreamReassembler {
     // Your code here -- add private members as necessary.
     // next in-order byte index of the entire stream will be written to _output
     uint64_t _next_stream_index;
+    // record the stream index corresponding to zero-index of _buffer
+    // that is, current _next_stream_index may not be at zero index
+    uint64_t _left_most_index;
     uint64_t _ending_index;
-    std::vector<bool> _reassemble_marker;
-    std::vector<char> _buffer{};
-    size_t _reassemble_count{0};
+    size_t _reassemble_count;
     bool _ended;
-
+    size_t _capacity;  //!< The maximum number of bytes
+    std::vector<bool> _reassemble_marker;
+    std::map<uint64_t, std::pair<uint64_t, std::string>> _buffer{};
     ByteStream _output;  //!< The reassembled in-order byte stream
-    size_t _capacity;    //!< The maximum number of bytes
+    // corresponding stream index [start, pair(end, data)]
 
     void reassemble();
+    std::string tohex(const std::string &data);
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

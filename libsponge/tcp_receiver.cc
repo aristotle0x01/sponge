@@ -37,11 +37,6 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         _fin = std::make_tuple(fin_seq, fin_abs_seq, true);
     }
 
-    string data = std::string();
-    if (seg.payload().size() > 0) {
-        data = std::string(seg.payload().str());
-    }
-
     uint64_t stream_index;
     if (seg.header().syn) {
         stream_index = 0;
@@ -63,7 +58,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     }
 
     if (seg.payload().size() > 0 or fin) {
-        _reassembler.push_substring(data, stream_index, fin);
+        _reassembler.push_substring(std::string(seg.payload().str()), stream_index, fin);
     }
 }
 

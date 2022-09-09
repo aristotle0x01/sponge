@@ -27,6 +27,8 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _ms_total_tick{0}
     , _consecutive_retransmissions{0} {}
 
+unsigned int TCPSender::consecutive_retransmissions() const { return _consecutive_retransmissions; }
+
 size_t TCPSender::bytes_in_flight() const {
     size_t bytes = 0;
     for (auto it = _outstanding.begin(); it != _outstanding.end(); ++it) {
@@ -36,15 +38,17 @@ size_t TCPSender::bytes_in_flight() const {
 }
 
 void TCPSender::fill_window() {
-    std::string state = TCPState::state_summary(*this);
-    if (state == TCPSenderStateSummary::CLOSED) {
+    if (_next_abs_seq_no == 0) {
         TCPSegment seg = build_segment(std::string(), true, false, _isn);
         _segments_out.push(seg);
         _outstanding[_next_abs_seq_no] = seg;
 
         _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
         _timer.start(_ms_total_tick, _retransmission_timeout);
-    } else if (state == TCPSenderStateSummary::SYN_ACKED) {
+    } else if (_next_abs_seq_no == bytes_in_flight()) {
+        // SYN_SENT;
+    } else if ((not stream_in().eof()) or (_next_abs_seq_no < stream_in().bytes_written() + 2)) {
+        // SYN_ACKED
         bool fin = false;
         while (!_stream.buffer_empty() and _next_abs_seq_no <= _wnd_right_abs_no) {
             size_t gap = _wnd_right_abs_no - _next_abs_seq_no + 1;
@@ -69,7 +73,6 @@ void TCPSender::fill_window() {
             _next_abs_seq_no = _next_abs_seq_no + seg.length_in_sequence_space();
             _timer.start(_ms_total_tick, _retransmission_timeout);
         }
-    } else {
     }
 }
 
@@ -127,20 +130,18 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 
     if (_outstanding.empty()) {
         _timer.stop();
-    } else {
-        if (expired) {
-            auto it = _outstanding.begin();
-            _segments_out.push(it->second);
-            if (_window_size > 0) {
-                _retransmission_timeout = _retransmission_timeout * 2;
-                _consecutive_retransmissions++;
-            }
-            _timer.restart(_ms_total_tick, _retransmission_timeout);
+        return;
+    }
+    if (expired) {
+        auto it = _outstanding.begin();
+        _segments_out.push(it->second);
+        if (_window_size > 0) {
+            _retransmission_timeout = _retransmission_timeout * 2;
+            _consecutive_retransmissions++;
         }
+        _timer.restart(_ms_total_tick, _retransmission_timeout);
     }
 }
-
-unsigned int TCPSender::consecutive_retransmissions() const { return _consecutive_retransmissions; }
 
 void TCPSender::send_empty_segment() {
     TCPSegment seg = build_segment(std::string(), false, false, wrap(_next_abs_seq_no, _isn));

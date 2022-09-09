@@ -21,6 +21,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     _last_recv_seg_tick = _total_tick;
 
     _receiver.segment_received(seg);
+
     if (seg.header().syn and 0 == _sender.next_seqno_absolute()) {
         // listening side response
         write(std::string());
@@ -69,6 +70,7 @@ void TCPConnection::send_reset() {
     TCPSegment &seg = _sender.segments_out().back();
     seg.header().rst = true;
     write(std::string());
+
     _sender.stream_in().set_error();
     _receiver.stream_out().set_error();
     _active = false;
@@ -102,6 +104,7 @@ bool TCPConnection::active() const { return _active; }
 size_t TCPConnection::write(const string &data) {
     size_t written = _sender.stream_in().write(data);
     _sender.fill_window();
+
     while (!_sender.segments_out().empty()) {
         TCPSegment &seg = _sender.segments_out().front();
         if (_receiver.ackno().has_value()) {
@@ -152,6 +155,7 @@ void TCPConnection::end_input_stream() {
 
 void TCPConnection::connect() {
     _sender.fill_window();
+
     while (!_sender.segments_out().empty()) {
         TCPSegment &seg = _sender.segments_out().front();
         _segments_out.push(seg);

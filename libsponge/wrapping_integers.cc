@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-// Dummy implementation of a 32-bit wrapping integer
+// implementation of a 32-bit wrapping integer
 
 // For Lab 2, please replace with a real implementation that passes the
 // automated checks run by `make check_lab2`.
@@ -30,10 +30,6 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    uint64_t t64 = 0;
-    std::vector<uint64_t> v_vec(3);
-    std::vector<uint64_t> d_vec(3);
-
     uint64_t STEP = (1ll << 32);
     uint64_t gap = 0;
     if (n.raw_value() >= isn.raw_value()) {
@@ -47,30 +43,34 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     if (multi > 2) {
         i = multi - 1;
     }
-    int c = 0;
-    while (c < 3) {
-        v_vec[c] = gap + STEP * i;
-        d_vec[c] = labs(checkpoint - v_vec[c]);
-        i++;
-        c++;
-    }
+
+    uint64_t v1, v2, v3;
+    uint64_t d1, d2, d3;
+    v1 = gap + STEP * (i++);
+    d1 = labs(checkpoint - v1);
+    v2 = gap + STEP * (i++);
+    d2 = labs(checkpoint - v2);
+    v3 = gap + STEP * (i++);
+    d3 = labs(checkpoint - v3);
+
+    uint64_t t64 = 0;
     while (true) {
         // monotonically increasing
-        if (d_vec[2] >= d_vec[1] and d_vec[1] >= d_vec[0]) {
-            t64 = v_vec[0];
+        if (d3 >= d2 and d2 >= d1) {
+            t64 = v1;
             break;
         }
         // decrement then increment
-        if (d_vec[2] >= d_vec[1] and d_vec[1] <= d_vec[0]) {
-            t64 = v_vec[1];
+        if (d3 >= d2 and d2 <= d1) {
+            t64 = v2;
             break;
         }
-        v_vec[0] = v_vec[1];
-        d_vec[0] = d_vec[1];
-        v_vec[1] = v_vec[2];
-        d_vec[1] = d_vec[2];
-        v_vec[2] = gap + STEP * i;
-        d_vec[2] = labs(checkpoint - v_vec[2]);
+        v1 = v2;
+        d1 = d2;
+        v2 = v3;
+        d2 = d3;
+        v3 = gap + STEP * i;
+        d3 = labs(checkpoint - v3);
         i++;
     }
 

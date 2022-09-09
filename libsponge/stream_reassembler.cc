@@ -18,7 +18,6 @@ using std::hex;
 
 StreamReassembler::StreamReassembler(const size_t capacity)
     : _next_stream_index(0)
-    , _left_most_index(0)
     , _ending_index(0)
     , _reassemble_count(0)
     , _ended(false)
@@ -43,19 +42,6 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         _ended = true;
     }
 
-    if (!data.empty() and _next_stream_index > _left_most_index) {
-        bool b1 = (index + data.length() - 1) >= (_left_most_index + _capacity);
-        bool b2 = (index + data.length() - 1) >= (_next_stream_index + _output.remaining_capacity());
-        if (b1 or b2) {
-            for (size_t j = _next_stream_index; j < (_left_most_index + _capacity); j++) {
-                // shift _reassemble_marker to start with _left_most_index
-                _reassemble_marker[j - _next_stream_index] = _reassemble_marker[j - _left_most_index];
-                _reassemble_marker[j - _left_most_index] = false;
-            }
-            _left_most_index = _next_stream_index;
-        }
-    }
-
     if (!data.empty()) {
         auto search = _buffer.find(index);
         if (search != _buffer.end()) {
@@ -70,12 +56,10 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         // always put into reassemble buffer first, then reassemble to in-order bytes
         // data exceed capacity will be discarded, reserve earlier bytes first
         size_t i = 0;
-        size_t avail_cap = _output.remaining_capacity();
-        while (i < data.length() and (index + i) < (_left_most_index + _capacity) and
-               (index + i) < (_next_stream_index + avail_cap)) {
+        while (i < data.length() and (index + i) < (_next_stream_index + _output.remaining_capacity())) {
             if ((index + i) >= _next_stream_index) {
                 // marker always starts with _left_most_index
-                int r_index = (index + i) - _left_most_index;
+                int r_index = (index + i) % _capacity;
                 if (!_reassemble_marker[r_index]) {
                     _reassemble_marker[r_index] = true;
                     _reassemble_count++;
@@ -93,14 +77,14 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
 }
 
 void StreamReassembler::reassemble() {
-    size_t avail_cap = _output.remaining_capacity();
     size_t reassembled = 0;
-    for (size_t j = _next_stream_index; j < (_next_stream_index + avail_cap) and j < (_left_most_index + _capacity);
-         j++) {
-        if (not _reassemble_marker[j - _left_most_index]) {
+    size_t t_index = 0;
+    for (size_t j = _next_stream_index; j < (_next_stream_index + _output.remaining_capacity()); j++) {
+        t_index = j % _capacity;
+        if (not _reassemble_marker[t_index]) {
             break;
         }
-        _reassemble_marker[j - _left_most_index] = false;
+        _reassemble_marker[t_index] = false;
         reassembled++;
     }
     if (0 == reassembled) {

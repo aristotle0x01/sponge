@@ -16,9 +16,6 @@ class StreamReassembler {
     // Your code here -- add private members as necessary.
     // next in-order byte index of the entire stream will be written to _output
     uint64_t _next_stream_index;
-    // record the stream index corresponding to zero-index of _buffer
-    // that is, current _next_stream_index may not be at zero index
-    uint64_t _left_most_index;
     uint64_t _ending_index;
     size_t _reassemble_count;
     bool _ended;

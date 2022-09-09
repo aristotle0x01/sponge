@@ -1,6 +1,7 @@
 #include "byte_stream.hh"
 
 #include <algorithm>
+#include <cstring>
 
 // implementation of a flow-controlled in-memory byte stream.
 
@@ -20,35 +21,57 @@ ByteStream::ByteStream(const size_t capacity) {
     this->_total_write_count = 0;
     this->_buffer.resize(capacity);
     this->_input_ended = false;
+    this->_avail = capacity;
 }
 
 size_t ByteStream::write(const string &data) {
-    size_t i = 0;
-    size_t writable = min(remaining_capacity(), data.length());
-    while (i < writable) {
-        data.copy(&this->_buffer[_write_pos], 1, i);
-        _write_pos = (_write_pos + 1) % _capacity;
-        _total_write_count = _total_write_count + 1;
-        i++;
-    }
+    if (data.length() == 0)
+        return 0;
 
-    return writable;
+    size_t capacity = _capacity;
+    size_t bytes_to_write = std::min(remaining_capacity(), data.length());
+
+    if (bytes_to_write <= capacity - _write_pos) {
+        memcpy(&_buffer[_write_pos], data.c_str(), bytes_to_write);
+        _write_pos = (_write_pos + bytes_to_write) % _capacity;
+        _total_write_count = _total_write_count + bytes_to_write;
+    } else {
+        size_t size_1 = capacity - _write_pos;
+        memcpy(&_buffer[_write_pos], data.c_str(), size_1);
+        _write_pos = (_write_pos + size_1) % _capacity;
+        _total_write_count = _total_write_count + size_1;
+        size_t size_2 = bytes_to_write - size_1;
+        memcpy(&_buffer[_write_pos], &data[size_1], size_2);
+        _write_pos = (_write_pos + size_2) % _capacity;
+        _total_write_count = _total_write_count + size_2;
+    }
+    this->_avail = this->_avail - bytes_to_write;
+
+    return bytes_to_write;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-    if (len == 0 or _total_read_count == _total_write_count) {
+    if (len == 0)
         return {};
+
+    size_t capacity = _capacity;
+    size_t bytes_to_read = std::min(_total_write_count - _total_read_count, len);
+
+    string r(bytes_to_read, 0);
+    if (bytes_to_read <= capacity - _read_pos) {
+        memcpy(&r[0], &_buffer[_read_pos], bytes_to_read);
+    } else {
+        size_t read_pos = _read_pos;
+
+        size_t size_1 = capacity - read_pos;
+        memcpy(&r[0], &_buffer[read_pos], size_1);
+        read_pos = (read_pos + size_1) % _capacity;
+        size_t size_2 = bytes_to_read - size_1;
+        memcpy(&r[size_1], &_buffer[read_pos], size_2);
+        read_pos = (read_pos + size_2) % _capacity;
     }
-    size_t readable = min(_total_write_count - _total_read_count, len);
-    string r(readable, 0);
-    size_t i = 0;
-    size_t pos = _read_pos;
-    while (i < readable) {
-        this->_buffer.copy(&r[i], 1, pos);
-        pos = (pos + 1) % _capacity;
-        i++;
-    }
+
     return r;
 }
 
@@ -59,18 +82,29 @@ void ByteStream::pop_output(const size_t len) { read(len); }
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
 std::string ByteStream::read(const size_t len) {
-    if (len == 0 or _total_read_count == _total_write_count) {
+    if (len == 0)
         return {};
+
+    size_t capacity = _capacity;
+    size_t bytes_to_read = std::min(_total_write_count - _total_read_count, len);
+
+    string r(bytes_to_read, 0);
+    if (bytes_to_read <= capacity - _read_pos) {
+        memcpy(&r[0], &_buffer[_read_pos], bytes_to_read);
+        _read_pos = (_read_pos + bytes_to_read) % _capacity;
+        _total_read_count = _total_read_count + bytes_to_read;
+    } else {
+        size_t size_1 = capacity - _read_pos;
+        memcpy(&r[0], &_buffer[_read_pos], size_1);
+        _read_pos = (_read_pos + size_1) % _capacity;
+        _total_read_count = _total_read_count + size_1;
+        size_t size_2 = bytes_to_read - size_1;
+        memcpy(&r[size_1], &_buffer[_read_pos], size_2);
+        _read_pos = (_read_pos + size_2) % _capacity;
+        _total_read_count = _total_read_count + size_2;
     }
-    size_t readable = min(_total_write_count - _total_read_count, len);
-    string r(readable, 0);
-    size_t i = 0;
-    while (i < readable) {
-        this->_buffer.copy(&r[i], 1, _read_pos);
-        _read_pos = (_read_pos + 1) % _capacity;
-        _total_read_count = _total_read_count + 1;
-        i++;
-    }
+    this->_avail = this->_avail + bytes_to_read;
+
     return r;
 }
 
@@ -88,4 +122,4 @@ size_t ByteStream::bytes_written() const { return _total_write_count; }
 
 size_t ByteStream::bytes_read() const { return _total_read_count; }
 
-size_t ByteStream::remaining_capacity() const { return _capacity - labs(_total_write_count - _total_read_count); }
+size_t ByteStream::remaining_capacity() const { return _avail; }

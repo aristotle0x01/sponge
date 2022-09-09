@@ -18,6 +18,7 @@ class ByteStream {
     size_t _total_write_count{};
     std::string _buffer{};
     bool _input_ended{};
+    size_t _avail{};
 
     // Hint: This doesn't need to be a sophisticated data structure at
     // all, but if any of your tests are taking longer than a second,

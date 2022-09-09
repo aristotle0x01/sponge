@@ -16,13 +16,13 @@ class StreamReassembler {
     // next in-order byte index of the entire stream will be written to _output
     uint64_t _next_stream_index;
     uint64_t _ending_index;
-    std::vector<bool> _reassemble_marker;
-    std::vector<char> _buffer{};
     size_t _reassemble_count{0};
     bool _ended;
-
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+
+    bool *_reassemble_marker{};
+    char *_buffer{};
 
     void reassemble();
 
@@ -31,6 +31,12 @@ class StreamReassembler {
     //! \note This capacity limits both the bytes that have been reassembled,
     //! and those that have not yet been reassembled.
     StreamReassembler(const size_t capacity);
+    ~StreamReassembler();
+    StreamReassembler() = delete;
+    StreamReassembler(StreamReassembler &&other) = default;
+    StreamReassembler &operator=(StreamReassembler &&other) = default;
+    StreamReassembler(const StreamReassembler &other) = delete;
+    StreamReassembler &operator=(const StreamReassembler &other) = delete;
 
     //! \brief Receive a substring and write any newly contiguous bytes into the stream.
     //!

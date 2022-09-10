@@ -20,24 +20,19 @@ class StreamReassembler {
     bool _ended;
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    std::string _buffer{};
 
-    bool *_reassemble_marker{};
-    char *_buffer{};
+    std::map<uint64_t, uint64_t> _marker_map{};
 
     void reassemble();
+    void recount();
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,
     //! and those that have not yet been reassembled.
     StreamReassembler(const size_t capacity);
-    ~StreamReassembler();
-    StreamReassembler() = delete;
-    StreamReassembler(StreamReassembler &&other) = default;
-    StreamReassembler &operator=(StreamReassembler &&other) = default;
-    StreamReassembler(const StreamReassembler &other) = delete;
-    StreamReassembler &operator=(const StreamReassembler &other) = delete;
-
+    
     //! \brief Receive a substring and write any newly contiguous bytes into the stream.
     //!
     //! The StreamReassembler will stay within the memory limits of the `capacity`.

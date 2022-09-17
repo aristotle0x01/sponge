@@ -4,16 +4,28 @@
 #include "byte_stream.hh"
 
 #include <cstdint>
+#include <map>
 #include <string>
+#include <vector>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-
+    // next in-order byte index of the entire stream will be written to _output
+    uint64_t _next_stream_index;
+    uint64_t _ending_index;
+    size_t _reassemble_count{0};
+    bool _ended;
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    std::string _buffer{};
+
+    std::map<uint64_t, uint64_t> _marker_map{};
+
+    void reassemble();
+    void recount();
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

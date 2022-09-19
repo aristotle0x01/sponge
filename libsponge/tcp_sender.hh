@@ -4,10 +4,13 @@
 #include "byte_stream.hh"
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
-#include "wrapping_integers.hh"
+#include "tcp_timer.hh"
 
 #include <functional>
+#include <map>
 #include <queue>
+
+using namespace std;
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -22,15 +25,32 @@ class TCPSender {
 
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};
-
-    //! retransmission timer for the connection
-    unsigned int _initial_retransmission_timeout;
+    //! sent yet not acked
+    std::map<uint64_t, TCPSegment> _outstanding{};
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
+    //! retransmission timer for the connection
+    TcpTimer _timer{0};
+    unsigned int _initial_retransmission_timeout;
+    unsigned int _retransmission_timeout;
+    //! accumulated tick of each tick() called, as timer start input
+    size_t _ms_total_tick;
+    size_t _consecutive_retransmissions{0};
+
     //! the (absolute) sequence number for the next byte to be sent
-    uint64_t _next_seqno{0};
+    uint64_t _next_abs_seq_no{0};
+    uint64_t _check_point{0};
+    // _last_ack_no corresponds to _wnd_left_abs_no
+    WrappingInt32 _last_ack_no{0};
+    // _wnd_right_abs_no - _wnd_left_abs_no + 1 = _window_size
+    uint64_t _wnd_left_abs_no{0};
+    uint64_t _wnd_right_abs_no{0};
+    // assume receiver’s window size before gotten an ACK? One byte
+    uint16_t _window_size{1};
+
+    TCPSegment build_segment(const string &data, bool syn, bool fin, WrappingInt32 seqno) const;
 
   public:
     //! Initialize a TCPSender
@@ -82,10 +102,10 @@ class TCPSender {
     //!@{
 
     //! \brief absolute seqno for the next byte to be sent
-    uint64_t next_seqno_absolute() const { return _next_seqno; }
+    uint64_t next_seqno_absolute() const { return _next_abs_seq_no; }
 
     //! \brief relative seqno for the next byte to be sent
-    WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
+    WrappingInt32 next_seqno() const { return wrap(_next_abs_seq_no, _isn); }
     //!@}
 };
 

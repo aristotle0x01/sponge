@@ -1,34 +1,10 @@
 Lab 7 Writeup
 =============
 
-My name: [your name here]
+**on port selection**
 
-My SUNet ID: [your sunetid here]
+` ./apps/lab7 server cs144.keithw.org 3000` 
 
-My lab partner's SUNet ID: [your sunetid here]
+`./apps/lab7 client cs144.keithw.org 3001`
 
-I also worked with or collaborated with: [their sunetids here]
-
-I would like to thank/reward these classmates for their help: [list sunetids here]
-
-This lab took me about [n] hours to do. I [did/did not] attend the lab session.
-
-Solo portion:
-[]
-
-Group portion:
-[]
-
-Creative portion (optional):
-[]
-
-Other remarks:
-[]
-
-- Optional: I had unexpected difficulty with: [describe]
-
-- Optional: I think you could make this lab better by: [describe]
-
-- Optional: I was surprised by: [describe]
-
-- Optional: I'm not sure about: [describe]
+if server port is 3000, then client must be 3001; if server 10000, client must be 10001 ...

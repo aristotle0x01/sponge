@@ -23,7 +23,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     _receiver.segment_received(seg);
 
     if (seg.header().syn and 0 == _sender.next_seqno_absolute()) {
-        // listening side response
+        // as listening server respond syn & ack
         write(std::string());
         _syn_sent_or_recv = true;
 
@@ -56,6 +56,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.send_empty_segment();
         write(std::string());
     }
+    // reply to these “keep-alives” even though they do not occupy any sequence numbers
     if (_receiver.ackno().has_value() and (seg.length_in_sequence_space() == 0) and
         seg.header().seqno == _receiver.ackno().value() - 1) {
         _sender.send_empty_segment();

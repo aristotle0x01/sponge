@@ -124,6 +124,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
+// Computing TCP's Retransmission Timer: https://www.rfc-editor.org/rfc/rfc6298
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _ms_total_tick = _ms_total_tick + ms_since_last_tick;
     bool expired = _timer.expire(_ms_total_tick);

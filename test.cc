@@ -1,19 +1,56 @@
-#include <algorithm>
 #include <iostream>
-#include <map>
-#include <string_view>
-#include <vector>
+#include <queue>
+#include <string>
 
-void print(std::string_view comment, const auto &data) {
-    std::cout << comment;
-    for (auto [k, v] : data)
-        std::cout << ' ' << k << '(' << v << ')';
+// g++ -o t test.cc -std=c++17 -ggdb3 -Og
 
-    std::cout << '\n';
+template <typename T>
+void clear(T &queue1, T &queue2) {
+    while (not queue1.empty()) {
+        queue1.pop();
+        queue2.pop();
+    }
 }
+
+class Class1 {
+  private:
+    std::queue<std::string> _frames_out{};
+
+  public:
+    std::queue<std::string> &frames_out() { return _frames_out; }
+
+    void add_s(std::string s) { _frames_out.push(s); }
+};
+
+class Class2 {
+  public:
+    void exchange_frames(Class1 &x, Class1 &y) {
+        auto x_frames = x.frames_out(), y_frames = y.frames_out();
+
+        deliver(x_frames, y);
+        deliver(y_frames, x);
+
+        clear(x_frames, x.frames_out());
+        clear(y_frames, y.frames_out());
+    }
+
+    void deliver(const std::queue<std::string> &src, Class1 &dst) {
+        std::queue<std::string> to_send = src;
+        while (not to_send.empty()) {
+            dst.add_s(to_send.front());
+            to_send.pop();
+        }
+    }
+};
 
 int main() {
-    uint32_t r = (189999 ^ 0) >> 32;
-    std::cout << "result: " << r << "\n";
+    Class1 c1x, c1y;
+    Class2 c2;
+
+    c1x.add_s("1");
+    c1x.add_s("2");
+
+    c2.exchange_frames(c1x, c1y);
+
+    return 0;
 }
-// g++ -o t test.cc -std=c++17

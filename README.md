@@ -77,10 +77,10 @@ key: cs144_vbox
 ssh -p 2222 cs144@localhost
 
 fork other branches form original cs144:
-        git remote add cs144 git@github.com:CS144/sponge.git
-        git fetch cs144
-        git branch lab4-startercode cs144/lab4-startercode
-        git push -u origin lab4-startercode
+	git remote add cs144 git@github.com:CS144/sponge.git
+ 	git fetch cs144
+  	git branch lab4-startercode cs144/lab4-startercode
+   	git push -u origin lab4-startercode
 
 g++ -o t test.cc -std=c++17
 g++ -o t test.cc -std=c++17 -g
